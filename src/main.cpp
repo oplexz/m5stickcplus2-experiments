@@ -105,20 +105,28 @@ void loop()
 
     if (buttonUp.pressed())
     {
-        if (selectedIndex > 0)
+        if (selectedIndex == 0)
+        {
+            selectedIndex = static_cast<int>(kItemCount) - 1;
+        }
+        else
         {
             selectedIndex--;
-            updated = true;
         }
+        updated = true;
     }
 
     if (buttonDown.pressed())
     {
-        if (selectedIndex < static_cast<int>(kItemCount) - 1)
+        if (selectedIndex >= static_cast<int>(kItemCount) - 1)
+        {
+            selectedIndex = 0;
+        }
+        else
         {
             selectedIndex++;
-            updated = true;
         }
+        updated = true;
     }
 
     if (updated)
