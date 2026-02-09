@@ -73,7 +73,7 @@ void setup()
     valueEditor.setLabel("Brightness");
     valueEditor.setSuffix("%");
     valueEditor.setRange(0, 100);
-    valueEditor.setStep(1);
+    valueEditor.setStep(5);
     valueEditor.setValue(50);
 
     list.draw();
