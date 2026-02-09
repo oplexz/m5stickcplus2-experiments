@@ -32,6 +32,8 @@ static ScrollList list(screen, kItems, kItemCount);
 static ValueEditor valueEditor(screen);
 
 static constexpr int kBrightnessItemIndex = 0;
+static constexpr uint32_t kRepeatDelayMs = 500;
+static constexpr uint32_t kRepeatIntervalMs = 33;
 
 enum class ScreenMode
 {
@@ -40,6 +42,10 @@ enum class ScreenMode
 };
 
 static ScreenMode screenMode = ScreenMode::List;
+static uint32_t upPressStartMs = 0;
+static uint32_t upLastRepeatMs = 0;
+static uint32_t downPressStartMs = 0;
+static uint32_t downLastRepeatMs = 0;
 
 static uint8_t percentToBrightness(int percent)
 {
@@ -79,6 +85,10 @@ void loop()
 
     if (screenMode == ScreenMode::List)
     {
+        buttonUp.read();
+        buttonDown.read();
+        buttonSelect.read();
+
         if (buttonUp.pressed())
         {
             updated = list.moveUp(true);
@@ -105,22 +115,65 @@ void loop()
     }
     else
     {
-        if (buttonUp.pressed())
+        uint32_t now = millis();
+        bool upState = (buttonUp.read() == Button::PRESSED);
+        bool upChanged = buttonUp.has_changed();
+
+        if (!upState)
+        {
+            upPressStartMs = 0;
+            upLastRepeatMs = 0;
+        }
+        else if (upChanged)
         {
             if (valueEditor.decrease())
             {
                 screen.setBrightness(percentToBrightness(valueEditor.value()));
                 valueEditor.draw();
             }
+            upPressStartMs = now;
+            upLastRepeatMs = now;
+        }
+        else if (upPressStartMs != 0 &&
+                 now - upPressStartMs >= kRepeatDelayMs &&
+                 now - upLastRepeatMs >= kRepeatIntervalMs)
+        {
+            if (valueEditor.decrease())
+            {
+                screen.setBrightness(percentToBrightness(valueEditor.value()));
+                valueEditor.draw();
+            }
+            upLastRepeatMs = now;
         }
 
-        if (buttonDown.pressed())
+        bool downState = (buttonDown.read() == Button::PRESSED);
+        bool downChanged = buttonDown.has_changed();
+
+        if (!downState)
+        {
+            downPressStartMs = 0;
+            downLastRepeatMs = 0;
+        }
+        else if (downChanged)
         {
             if (valueEditor.increase())
             {
                 screen.setBrightness(percentToBrightness(valueEditor.value()));
                 valueEditor.draw();
             }
+            downPressStartMs = now;
+            downLastRepeatMs = now;
+        }
+        else if (downPressStartMs != 0 &&
+                 now - downPressStartMs >= kRepeatDelayMs &&
+                 now - downLastRepeatMs >= kRepeatIntervalMs)
+        {
+            if (valueEditor.increase())
+            {
+                screen.setBrightness(percentToBrightness(valueEditor.value()));
+                valueEditor.draw();
+            }
+            downLastRepeatMs = now;
         }
 
         if (buttonSelect.pressed())
