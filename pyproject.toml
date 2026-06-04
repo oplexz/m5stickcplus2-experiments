@@ -4,5 +4,6 @@ version = "0.1.0"
 description = "A little pet-project with some random HW stuff utilized"
 requires-python = ">=3.14"
 dependencies = [
+    "intelhex>=2.3.0",
     "platformio>=6.1.19",
 ]
