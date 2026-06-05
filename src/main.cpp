@@ -9,6 +9,7 @@
 #include <IrRepeatSender.h>
 #include <BleTempSensor.h>
 #include <DisplayBench.h>
+#include <BleKeyboard.h>
 
 static M5GFX screen;
 
@@ -34,47 +35,61 @@ static IrRemote lampRemote(screen, kIrPin, kLampCommands, kLampCommandCount);
 
 static BleTempSensor bleTempSensor(screen);
 
+// Root menu
 static constexpr const char* kItems[] = {
     "Brightness",
-    "Lamp Remote",
+    "IR Tools",
     "Temp Sensor",
+    "BLE Keyboard",
+    "Display Bench",
+};
+static constexpr size_t kItemCount = sizeof(kItems) / sizeof(kItems[0]);
+static ScrollList list(screen, kItems, kItemCount);
+
+static constexpr int kBrightnessItemIndex   = 0;
+static constexpr int kIrToolsItemIndex      = 1;
+static constexpr int kTempSensorItemIndex   = 2;
+static constexpr int kBleKeyboardItemIndex  = 3;
+static constexpr int kDisplayBenchItemIndex = 4;
+
+// IR submenu
+static constexpr const char* kIrItems[] = {
+    "Lamp Remote",
     "IR Bruteforce",
     "IR Send",
     "IR Repeat",
-    "Display Bench",
 };
+static constexpr size_t kIrItemCount = sizeof(kIrItems) / sizeof(kIrItems[0]);
+static ScrollList irList(screen, kIrItems, kIrItemCount);
 
-static constexpr size_t kItemCount = sizeof(kItems) / sizeof(kItems[0]);
-static ScrollList list(screen, kItems, kItemCount);
+static constexpr int kIrLampItemIndex      = 0;
+static constexpr int kIrBruteforceItemIndex = 1;
+static constexpr int kIrSendItemIndex      = 2;
+static constexpr int kIrRepeatItemIndex    = 3;
+
 static ValueEditor valueEditor(screen);
-
-static constexpr int kBrightnessItemIndex = 0;
-static constexpr int kLampRemoteItemIndex = 1;
-static constexpr int kTempSensorItemIndex = 2;
-static constexpr int kIrBruteforceItemIndex = 3;
-static constexpr int kIrSendItemIndex = 4;
-static constexpr int kIrRepeatItemIndex = 5;
-static constexpr int kDisplayBenchItemIndex = 6;
 
 static IrBruteforce irBruteforce(screen, kIrPin);
 static IrCodeSender irCodeSender(screen, kIrPin);
 static IrRepeatSender irRepeatSender(screen, kIrPin);
 static DisplayBench displayBench(screen);
+static BleKeyboard bleKeyboard(screen, "M5 Macro", 4321);
 
-static constexpr uint32_t kRepeatDelayMs = 500;
+static constexpr uint32_t kRepeatDelayMs   = 500;
 static constexpr uint32_t kRepeatIntervalMs = 33;
-
-static constexpr uint32_t kLongPressMs = 600;
+static constexpr uint32_t kLongPressMs     = 600;
 
 enum class ScreenMode
 {
     List,
+    IrMenu,
     Editor,
     IrBruteforce,
     IrSend,
     IrRepeat,
     LampRemote,
     TempSensor,
+    BleKeyboard,
     DisplayBench,
 };
 
@@ -148,11 +163,11 @@ void loop()
                 screenMode = ScreenMode::Editor;
                 valueEditor.draw();
             }
-            else if (list.selectedIndex() == kLampRemoteItemIndex)
+            else if (list.selectedIndex() == kIrToolsItemIndex)
             {
-                screenMode = ScreenMode::LampRemote;
+                screenMode = ScreenMode::IrMenu;
                 selectPressStartMs = 0;
-                lampRemote.draw();
+                irList.draw();
             }
             else if (list.selectedIndex() == kTempSensorItemIndex)
             {
@@ -160,22 +175,11 @@ void loop()
                 selectPressStartMs = 0;
                 bleTempSensor.start();
             }
-            else if (list.selectedIndex() == kIrBruteforceItemIndex)
+            else if (list.selectedIndex() == kBleKeyboardItemIndex)
             {
-                screenMode = ScreenMode::IrBruteforce;
-                irBruteforce.start();
-            }
-            else if (list.selectedIndex() == kIrSendItemIndex)
-            {
-                screenMode = ScreenMode::IrSend;
+                screenMode = ScreenMode::BleKeyboard;
                 selectPressStartMs = 0;
-                irCodeSender.draw();
-            }
-            else if (list.selectedIndex() == kIrRepeatItemIndex)
-            {
-                screenMode = ScreenMode::IrRepeat;
-                selectPressStartMs = 0;
-                irRepeatSender.draw();
+                bleKeyboard.start();
             }
             else if (list.selectedIndex() == kDisplayBenchItemIndex)
             {
@@ -188,6 +192,73 @@ void loop()
         if (updated)
         {
             list.draw();
+        }
+    }
+    else if (screenMode == ScreenMode::IrMenu)
+    {
+        buttonUp.read();
+        buttonDown.read();
+
+        if (buttonUp.pressed())
+        {
+            updated = irList.moveUp(true);
+        }
+
+        if (buttonDown.pressed())
+        {
+            updated = irList.moveDown(true) || updated;
+        }
+
+        uint32_t now = millis();
+        bool selectState = (buttonSelect.read() == Button::PRESSED);
+        bool selectChanged = buttonSelect.has_changed();
+
+        if (selectState && selectChanged)
+        {
+            selectPressStartMs = now;
+        }
+        else if (!selectState && selectChanged && selectPressStartMs != 0)
+        {
+            if (now - selectPressStartMs < kLongPressMs)
+            {
+                selectPressStartMs = 0;
+                if (irList.selectedIndex() == kIrLampItemIndex)
+                {
+                    screenMode = ScreenMode::LampRemote;
+                    lampRemote.draw();
+                }
+                else if (irList.selectedIndex() == kIrBruteforceItemIndex)
+                {
+                    screenMode = ScreenMode::IrBruteforce;
+                    irBruteforce.start();
+                }
+                else if (irList.selectedIndex() == kIrSendItemIndex)
+                {
+                    screenMode = ScreenMode::IrSend;
+                    irCodeSender.draw();
+                }
+                else if (irList.selectedIndex() == kIrRepeatItemIndex)
+                {
+                    screenMode = ScreenMode::IrRepeat;
+                    irRepeatSender.draw();
+                }
+            }
+            else
+            {
+                selectPressStartMs = 0;
+            }
+        }
+        else if (selectState && selectPressStartMs != 0 &&
+                 now - selectPressStartMs >= kLongPressMs)
+        {
+            selectPressStartMs = 0;
+            screenMode = ScreenMode::List;
+            list.draw();
+        }
+
+        if (updated)
+        {
+            irList.draw();
         }
     }
     else if (screenMode == ScreenMode::Editor)
@@ -269,15 +340,14 @@ void loop()
         if (buttonSelect.pressed())
         {
             irBruteforce.stop();
-            screenMode = ScreenMode::List;
-            list.draw();
+            screenMode = ScreenMode::IrMenu;
+            irList.draw();
         }
     }
     else if (screenMode == ScreenMode::IrSend)
     {
         uint32_t now = millis();
 
-        // Up/down with hold-to-repeat
         bool upState = (buttonUp.read() == Button::PRESSED);
         bool upChanged = buttonUp.has_changed();
 
@@ -322,18 +392,16 @@ void loop()
             downLastRepeatMs = now;
         }
 
-        // Select: short press = send, hold 3s = back to menu
+        // Select: short press = send, long press = back to IR menu
         bool selectState = (buttonSelect.read() == Button::PRESSED);
         bool selectChanged = buttonSelect.has_changed();
 
         if (selectState && selectChanged)
         {
-            // Just pressed down
             selectPressStartMs = now;
         }
         else if (!selectState && selectChanged && selectPressStartMs != 0)
         {
-            // Released before long-press threshold -- send the code
             if (now - selectPressStartMs < kLongPressMs)
             {
                 irCodeSender.send();
@@ -343,18 +411,15 @@ void loop()
         else if (selectState && selectPressStartMs != 0 &&
                  now - selectPressStartMs >= kLongPressMs)
         {
-            // Held long enough -- go back
             selectPressStartMs = 0;
-            screenMode = ScreenMode::List;
-            list.draw();
+            screenMode = ScreenMode::IrMenu;
+            irList.draw();
         }
     }
-
     else if (screenMode == ScreenMode::IrRepeat)
     {
         uint32_t now = millis();
 
-        // Up/down with hold-to-repeat for navigation
         bool upState = (buttonUp.read() == Button::PRESSED);
         bool upChanged = buttonUp.has_changed();
 
@@ -399,10 +464,9 @@ void loop()
             downLastRepeatMs = now;
         }
 
-        // Auto-send tick
         irRepeatSender.tick();
 
-        // Select: short press = toggle sending, long hold = back
+        // Select: short press = toggle sending, long press = back to IR menu
         bool selectState = (buttonSelect.read() == Button::PRESSED);
         bool selectChanged = buttonSelect.has_changed();
 
@@ -414,7 +478,6 @@ void loop()
         {
             if (now - selectPressStartMs < kLongPressMs)
             {
-                // Toggle sending on/off
                 if (irRepeatSender.isSending())
                 {
                     irRepeatSender.stopSending();
@@ -431,8 +494,8 @@ void loop()
         {
             irRepeatSender.stopSending();
             selectPressStartMs = 0;
-            screenMode = ScreenMode::List;
-            list.draw();
+            screenMode = ScreenMode::IrMenu;
+            irList.draw();
         }
     }
     else if (screenMode == ScreenMode::LampRemote)
@@ -459,7 +522,7 @@ void loop()
             }
         }
 
-        // Select: short press = send, hold 3s = back to menu
+        // Select: short press = send, long press = back to IR menu
         bool selectState = (buttonSelect.read() == Button::PRESSED);
         bool selectChanged = buttonSelect.has_changed();
 
@@ -479,18 +542,16 @@ void loop()
                  now - selectPressStartMs >= kLongPressMs)
         {
             selectPressStartMs = 0;
-            screenMode = ScreenMode::List;
-            list.draw();
+            screenMode = ScreenMode::IrMenu;
+            irList.draw();
         }
     }
-
     else if (screenMode == ScreenMode::TempSensor)
     {
         uint32_t now = millis();
 
         bleTempSensor.tick();
 
-        // Only need Select for long-hold back
         buttonUp.read();
         buttonDown.read();
 
@@ -514,7 +575,38 @@ void loop()
             list.draw();
         }
     }
+    else if (screenMode == ScreenMode::BleKeyboard)
+    {
+        uint32_t now = millis();
+        bleKeyboard.tick();
 
+        buttonUp.read();
+        buttonDown.read();
+
+        bool selectState = (buttonSelect.read() == Button::PRESSED);
+        bool selectChanged = buttonSelect.has_changed();
+
+        if (selectState && selectChanged)
+        {
+            selectPressStartMs = now;
+        }
+        else if (!selectState && selectChanged && selectPressStartMs != 0)
+        {
+            if (now - selectPressStartMs < kLongPressMs)
+            {
+                bleKeyboard.runMacro();
+            }
+            selectPressStartMs = 0;
+        }
+        else if (selectState && selectPressStartMs != 0 &&
+                 now - selectPressStartMs >= kLongPressMs)
+        {
+            bleKeyboard.stop();
+            selectPressStartMs = 0;
+            screenMode = ScreenMode::List;
+            list.draw();
+        }
+    }
     else if (screenMode == ScreenMode::DisplayBench)
     {
         uint32_t now = millis();
