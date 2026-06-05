@@ -7,8 +7,6 @@
 #include <IrCodeSender.h>
 #include <IrRemote.h>
 #include <IrRepeatSender.h>
-#include <BleTempSensor.h>
-#include <DisplayBench.h>
 #include <BleKeyboard.h>
 
 static M5GFX screen;
@@ -33,24 +31,18 @@ static constexpr IrCommand kLampCommands[] = {
 static constexpr size_t kLampCommandCount = sizeof(kLampCommands) / sizeof(kLampCommands[0]);
 static IrRemote lampRemote(screen, kIrPin, kLampCommands, kLampCommandCount);
 
-static BleTempSensor bleTempSensor(screen);
-
 // Root menu
 static constexpr const char* kItems[] = {
     "Brightness",
     "IR Tools",
-    "Temp Sensor",
     "BLE Keyboard",
-    "Display Bench",
 };
 static constexpr size_t kItemCount = sizeof(kItems) / sizeof(kItems[0]);
 static ScrollList list(screen, kItems, kItemCount);
 
 static constexpr int kBrightnessItemIndex   = 0;
 static constexpr int kIrToolsItemIndex      = 1;
-static constexpr int kTempSensorItemIndex   = 2;
-static constexpr int kBleKeyboardItemIndex  = 3;
-static constexpr int kDisplayBenchItemIndex = 4;
+static constexpr int kBleKeyboardItemIndex  = 2;
 
 // IR submenu
 static constexpr const char* kIrItems[] = {
@@ -72,7 +64,6 @@ static ValueEditor valueEditor(screen);
 static IrBruteforce irBruteforce(screen, kIrPin);
 static IrCodeSender irCodeSender(screen, kIrPin);
 static IrRepeatSender irRepeatSender(screen, kIrPin);
-static DisplayBench displayBench(screen);
 static BleKeyboard bleKeyboard(screen, "M5 Macro", 4321);
 
 static constexpr uint32_t kRepeatDelayMs   = 500;
@@ -88,9 +79,7 @@ enum class ScreenMode
     IrSend,
     IrRepeat,
     LampRemote,
-    TempSensor,
     BleKeyboard,
-    DisplayBench,
 };
 
 static ScreenMode screenMode = ScreenMode::List;
@@ -169,23 +158,11 @@ void loop()
                 selectPressStartMs = 0;
                 irList.draw();
             }
-            else if (list.selectedIndex() == kTempSensorItemIndex)
-            {
-                screenMode = ScreenMode::TempSensor;
-                selectPressStartMs = 0;
-                bleTempSensor.start();
-            }
             else if (list.selectedIndex() == kBleKeyboardItemIndex)
             {
                 screenMode = ScreenMode::BleKeyboard;
                 selectPressStartMs = 0;
                 bleKeyboard.start();
-            }
-            else if (list.selectedIndex() == kDisplayBenchItemIndex)
-            {
-                screenMode = ScreenMode::DisplayBench;
-                selectPressStartMs = 0;
-                displayBench.start();
             }
         }
 
@@ -546,35 +523,6 @@ void loop()
             irList.draw();
         }
     }
-    else if (screenMode == ScreenMode::TempSensor)
-    {
-        uint32_t now = millis();
-
-        bleTempSensor.tick();
-
-        buttonUp.read();
-        buttonDown.read();
-
-        bool selectState = (buttonSelect.read() == Button::PRESSED);
-        bool selectChanged = buttonSelect.has_changed();
-
-        if (selectState && selectChanged)
-        {
-            selectPressStartMs = now;
-        }
-        else if (!selectState && selectChanged)
-        {
-            selectPressStartMs = 0;
-        }
-        else if (selectState && selectPressStartMs != 0 &&
-                 now - selectPressStartMs >= kLongPressMs)
-        {
-            bleTempSensor.stop();
-            selectPressStartMs = 0;
-            screenMode = ScreenMode::List;
-            list.draw();
-        }
-    }
     else if (screenMode == ScreenMode::BleKeyboard)
     {
         uint32_t now = millis();
@@ -607,40 +555,6 @@ void loop()
             list.draw();
         }
     }
-    else if (screenMode == ScreenMode::DisplayBench)
-    {
-        uint32_t now = millis();
-        displayBench.tick();
 
-        buttonUp.read();
-        buttonDown.read();
-
-        bool selectState = (buttonSelect.read() == Button::PRESSED);
-        bool selectChanged = buttonSelect.has_changed();
-
-        if (selectState && selectChanged)
-        {
-            selectPressStartMs = now;
-        }
-        else if (!selectState && selectChanged)
-        {
-            selectPressStartMs = 0;
-        }
-        else if (selectState && selectPressStartMs != 0 &&
-                 now - selectPressStartMs >= kLongPressMs)
-        {
-            selectPressStartMs = 0;
-            screenMode = ScreenMode::List;
-            list.draw();
-        }
-    }
-
-    if (screenMode == ScreenMode::DisplayBench)
-    {
-        delay(0);
-    }
-    else
-    {
-        delay(10);
-    }
+    delay(10);
 }
