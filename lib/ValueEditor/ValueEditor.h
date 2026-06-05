@@ -6,7 +6,7 @@
 
 class ValueEditor
 {
-  public:
+public:
     ValueEditor(M5GFX& screen);
 
     void setLabel(const char* label);
@@ -21,16 +21,20 @@ class ValueEditor
     bool decrease();
     void draw();
 
-  private:
+    // Getters used by the view
+    const char* label()  const { return label_;  }
+    const char* suffix() const { return suffix_; }
+
+private:
     int clamp(int value) const;
 
-    M5GFX& screen_;
+    M5GFX&      screen_;
     const char* label_;
     const char* suffix_;
-    int minValue_;
-    int maxValue_;
-    int step_;
-    int value_;
+    int         minValue_;
+    int         maxValue_;
+    int         step_;
+    int         value_;
 };
 
 #endif

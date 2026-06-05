@@ -3,11 +3,12 @@
 
 #include <Arduino.h>
 #include <M5GFX.h>
-#include <IRsend.h>
+#include <NecSender.h>
+#include <CodeIndex.h>
 
 class IrCodeSender
 {
-  public:
+public:
     IrCodeSender(M5GFX& screen, uint16_t irPin);
 
     void begin();
@@ -22,19 +23,14 @@ class IrCodeSender
     void send();
 
     // Getters
-    uint8_t address() const;
-    uint8_t command() const;
+    uint8_t  address()   const;
+    uint8_t  command()   const;
     uint32_t codeIndex() const;
 
-  private:
-    void drawCode();
-
-    M5GFX& screen_;
-    IRsend irSender_;
-
-    uint32_t codeIndex_; // 0 .. 65535
-
-    static constexpr uint32_t kTotalCodes = 256UL * 256UL;
+private:
+    M5GFX&     screen_;
+    NecSender  sender_;
+    CodeIndex  codeIndex_;
 };
 
 #endif

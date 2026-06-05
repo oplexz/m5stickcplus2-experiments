@@ -3,18 +3,13 @@
 
 #include <Arduino.h>
 #include <M5GFX.h>
-#include <IRsend.h>
-
-struct IrCommand
-{
-    const char* name;
-    uint8_t address;
-    uint8_t command;
-};
+#include <NecSender.h>
+#include <ListModel.h>
+#include "IrCommand.h"
 
 class IrRemote
 {
-  public:
+public:
     IrRemote(M5GFX& screen, uint16_t irPin,
              const IrCommand* commands, size_t count);
 
@@ -25,27 +20,16 @@ class IrRemote
     bool moveDown(bool wrap);
     void sendSelected();
 
-    int selectedIndex() const;
+    int              selectedIndex() const;
     const IrCommand& selectedCommand() const;
 
-  private:
-    void ensureSelectionVisible();
+private:
     int visibleRows() const;
-    void drawList();
 
-    M5GFX& screen_;
-    IRsend irSender_;
+    M5GFX&           screen_;
+    NecSender        sender_;
     const IrCommand* commands_;
-    size_t count_;
-
-    int selectedIndex_;
-    int topIndex_;
-
-    static constexpr int kListTop = 8;
-    static constexpr int kListLeft = 8;
-    static constexpr int kLineHeight = 20;
-    static constexpr int kTextSize = 2;
-    static constexpr int kScrollPadding = 4;
+    ListModel        model_;
 };
 
 #endif

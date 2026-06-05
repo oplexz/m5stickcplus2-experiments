@@ -3,11 +3,11 @@
 
 #include <Arduino.h>
 #include <M5GFX.h>
-#include <IRsend.h>
+#include <NecSender.h>
 
 class IrBruteforce
 {
-  public:
+public:
     IrBruteforce(M5GFX& screen, uint16_t irPin);
 
     void setDelayMs(uint32_t delayMs);
@@ -20,25 +20,22 @@ class IrBruteforce
 
     uint16_t currentAddress() const;
     uint16_t currentCommand() const;
-    uint32_t totalCodes() const;
-    uint32_t codesSent() const;
+    uint32_t totalCodes()     const;
+    uint32_t codesSent()      const;
 
-  private:
-    void drawProgress();
-    void sendCurrentCode();
+private:
+    static constexpr uint32_t kTotalCodes = 256UL * 256UL;
 
-    M5GFX& screen_;
-    IRsend irSender_;
+    M5GFX&    screen_;
+    NecSender sender_;
 
     uint32_t delayMs_;
     uint32_t lastSendMs_;
 
-    bool running_;
+    bool     running_;
     uint16_t address_;
     uint16_t command_;
     uint32_t codesSent_;
-
-    static constexpr uint32_t kTotalCodes = 256UL * 256UL; // 65536
 };
 
 #endif

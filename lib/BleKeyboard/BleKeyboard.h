@@ -3,9 +3,11 @@
 
 #include <Arduino.h>
 #include <M5GFX.h>
-#include <NimBLEDevice.h>
-#include <NimBLEHIDDevice.h>
+#include "BleHidKeyboard.h"
 
+// Thin orchestrator: owns the BLE transport (BleHidKeyboard), the display
+// canvas, the macro sequence, and display-state timing. All NimBLE and HID
+// logic lives in BleHidKeyboard; all drawing logic lives in BleKeyboardView.
 class BleKeyboard
 {
 public:
@@ -16,39 +18,26 @@ public:
     void stop();
     void tick();
 
-    // Types a plain ASCII string as BLE keyboard keypresses
     void typeString(const char* str);
-
     void runMacro();
 
     bool isConnected() const;
 
 private:
-    static uint8_t charToKeycode(char c, uint8_t& modifierOut);
-
-    void initBle();
-    void sendKey(uint8_t modifier, uint8_t keycode);
     void drawScreen(uint32_t nowMs);
-    template <typename T> void drawContent(T& display, uint32_t nowMs);
 
-    M5GFX& screen_;
-    M5Canvas canvas_;
-    bool canvasReady_;
+    M5GFX&         screen_;
+    M5Canvas       canvas_;
+    bool           canvasReady_;
+    BleHidKeyboard transport_;
+    const char*    name_;
+    uint32_t       passkey_;
 
-    const char* name_;
-    uint32_t passkey_;
-
-    bool active_;
-    bool bleReady_;
-    bool bleConnected_;
-    bool bleAuthenticated_;
+    bool     active_;
     uint32_t sentFlashMs_;
     uint32_t lastDrawMs_;
 
-    NimBLEServer* server_;
-    NimBLEHIDDevice* hid_;
-    NimBLECharacteristic* inputKeyboard_;
-    NimBLEServerCallbacks* serverCallbacks_;
+    static constexpr uint32_t kDrawIntervalMs = 100;
 };
 
 #endif
