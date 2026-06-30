@@ -1,24 +1,29 @@
 #include "BleKeyboard.h"
 #include "BleKeyboardView.h"
-#include "HidKeycodes.h"
+#include <Scenarios.h>
 
 BleKeyboard::BleKeyboard(M5GFX& screen, const char* deviceName, uint32_t passkey)
 : screen_(screen)
 , canvas_(&screen)
 , canvasReady_(false)
 , transport_(deviceName, passkey)
+, runner_(transport_)
 , name_(deviceName)
 , passkey_(passkey)
 , active_(false)
-, sentFlashMs_(0)
+, selectedScenario_(0)
+, doneFlashMs_(0)
 , lastDrawMs_(0)
+, dirty_(false)
 {}
 
 void BleKeyboard::start()
 {
-    active_      = true;
-    sentFlashMs_ = 0;
-    lastDrawMs_  = 0;
+    active_           = true;
+    doneFlashMs_      = 0;
+    lastDrawMs_       = 0;
+    dirty_            = true;
+    selectedScenario_ = 0;
 
     if (!canvasReady_)
     {
@@ -39,6 +44,7 @@ void BleKeyboard::start()
 void BleKeyboard::stop()
 {
     active_ = false;
+    runner_.stop();
     transport_.stop();
 }
 
@@ -47,67 +53,60 @@ void BleKeyboard::tick()
     if (!active_) return;
 
     uint32_t now = millis();
-    if (now - lastDrawMs_ >= kDrawIntervalMs)
+
+    bool wasRunning = runner_.isRunning();
+    runner_.tick(now);
+    bool isNowRunning = runner_.isRunning();
+
+    // Detect Once-scenario completion to flash "Done!".
+    if (wasRunning && !isNowRunning)
+    {
+        doneFlashMs_ = now;
+        dirty_       = true;
+    }
+
+    // Redraw on interval or when marked dirty (selection change, step advance).
+    if (dirty_ || (now - lastDrawMs_ >= kDrawIntervalMs))
     {
         lastDrawMs_ = now;
+        dirty_      = false;
         drawScreen(now);
     }
 }
 
-void BleKeyboard::typeString(const char* str)
+void BleKeyboard::selectPrev()
 {
-    transport_.typeString(str);
-    if (transport_.isAuthenticated())
-    {
-        sentFlashMs_ = millis();
-    }
+    if (runner_.isRunning()) return;
+    selectedScenario_ = (selectedScenario_ == 0)
+                        ? static_cast<int>(kScenarioCount) - 1
+                        : selectedScenario_ - 1;
+    dirty_ = true;
 }
 
-void BleKeyboard::runMacro()
+void BleKeyboard::selectNext()
+{
+    if (runner_.isRunning()) return;
+    selectedScenario_ = (selectedScenario_ + 1) % static_cast<int>(kScenarioCount);
+    dirty_ = true;
+}
+
+void BleKeyboard::activate(uint32_t now)
 {
     if (!transport_.isAuthenticated()) return;
-
-    using namespace HidKeycodes;
-
-    auto key   = [&](uint8_t k)              { transport_.sendKey(0x00,      k); };
-    auto shift = [&](uint8_t k)              { transport_.sendKey(kModShift, k); };
-    auto ctrl  = [&](uint8_t k)              { transport_.sendKey(kModCtrl,  k); };
-    auto combo = [&](uint8_t mod, uint8_t k) { transport_.sendKey(mod,       k); };
-    auto sleep = [&](uint32_t minMs, uint32_t maxMs = 0) {
-        delay(maxMs > minMs ? static_cast<uint32_t>(random(minMs, maxMs + 1)) : minMs);
-    };
-    (void)shift; (void)ctrl; (void)combo;
-
-    key(kEnter);
-    sleep(300, 400);
-    key(kEnter);
-    sleep(900, 1000);
-    key(kY);
-    sleep(205, 305);
-    key(kDown);
-    sleep(50, 150);
-    key(kEnter);
-    sleep(200, 300);
-    key(kEnter);
-    sleep(200, 300);
-    key(kEsc);
-    sleep(75, 150);
-    key(kEsc);
-    sleep(75, 150);
-    key(kEsc);
-    sleep(75, 150);
-    key(kEsc);
-    sleep(75, 150);
-    key(kEsc);
-    sleep(700, 800);
-
-    sentFlashMs_ = millis();
+    if (selectedScenario_ < 0 || selectedScenario_ >= static_cast<int>(kScenarioCount)) return;
+    doneFlashMs_ = 0;
+    runner_.start(&kScenarios[selectedScenario_], now);
+    dirty_ = true;
 }
 
-bool BleKeyboard::isConnected() const
+void BleKeyboard::cancel()
 {
-    return transport_.isAuthenticated();
+    runner_.stop();
+    dirty_ = true;
 }
+
+bool BleKeyboard::isRunning()   const { return runner_.isRunning(); }
+bool BleKeyboard::isConnected() const { return transport_.isAuthenticated(); }
 
 void BleKeyboard::drawScreen(uint32_t nowMs)
 {
@@ -116,7 +115,15 @@ void BleKeyboard::drawScreen(uint32_t nowMs)
         transport_.isAuthenticated(),
         name_,
         passkey_,
-        sentFlashMs_
+        kScenarios,
+        kScenarioCount,
+        selectedScenario_,
+        runner_.isRunning(),
+        runner_.activeScenario(),
+        runner_.currentActionIndex(),
+        runner_.chosenWaits(),
+        runner_.loopCount(),
+        doneFlashMs_,
     };
 
     if (canvasReady_)

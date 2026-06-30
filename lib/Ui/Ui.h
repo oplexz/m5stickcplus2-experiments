@@ -86,12 +86,16 @@ namespace Ui
     //   2. Sets text colour from colors.
     //   3. Calls drawRow(g, itemIndex, y, isSelected).
     //
+    // GFX is templated so this works with both M5GFX (direct screen) and
+    // M5Canvas (sprite buffer).  drawRow lambdas should use `auto& g` rather
+    // than `M5GFX& g` when they may be instantiated with M5Canvas.
+    //
     // drawRow is responsible for printing the row content starting at y.
     // It may change text size / colour for secondary columns but should
     // restore layout.textSize before returning so the next row is consistent.
     //
-    template <typename DrawRowFn>
-    void listRows(M5GFX& g, const ListLayout& layout, const ListColors& colors,
+    template <typename GFX, typename DrawRowFn>
+    void listRows(GFX& g, const ListLayout& layout, const ListColors& colors,
                   int topIndex, int count, int selectedIndex,
                   DrawRowFn drawRow)
     {

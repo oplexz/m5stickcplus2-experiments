@@ -25,8 +25,14 @@ public:
     bool isConnected()     const;
     bool isAuthenticated() const;
 
-    // Send a single key press+release report.
+    // Send a single key press+release report (atomic).
     void sendKey(uint8_t modifier, uint8_t keycode);
+
+    // Send only the key-down report — key stays held until keyUp() is called.
+    void keyDown(uint8_t modifier, uint8_t keycode);
+
+    // Send the all-zeros release report (releases all held keys).
+    void keyUp();
 
     // Type a plain ASCII string one character at a time.
     void typeString(const char* str);

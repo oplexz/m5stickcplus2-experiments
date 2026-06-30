@@ -73,7 +73,9 @@ static IrRepeatScreen     irRepeatScreen(irRepeatSender,
                                          buttonUp, buttonDown, buttonSelect,
                                          kRepeatDelayMs, kRepeatIntervalMs, kLongPressMs);
 static LampRemoteScreen   lampRemoteScreen(lampRemote, buttonSelect, kLongPressMs);
-static BleKeyboardScreen  bleKeyboardScreen(bleKeyboard, buttonSelect, kLongPressMs);
+static BleKeyboardScreen  bleKeyboardScreen(bleKeyboard,
+                                           buttonUp, buttonDown, buttonSelect,
+                                           kRepeatDelayMs, kRepeatIntervalMs, kLongPressMs);
 
 static ScreenManager manager;
 

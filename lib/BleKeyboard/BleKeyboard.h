@@ -4,38 +4,50 @@
 #include <Arduino.h>
 #include <M5GFX.h>
 #include "BleHidKeyboard.h"
+#include "ScenarioRunner.h"
 
 // Thin orchestrator: owns the BLE transport (BleHidKeyboard), the display
-// canvas, the macro sequence, and display-state timing. All NimBLE and HID
-// logic lives in BleHidKeyboard; all drawing logic lives in BleKeyboardView.
+// canvas, the scenario runner, and scenario selection state.
+// All NimBLE / HID logic lives in BleHidKeyboard.
+// All drawing logic lives in BleKeyboardView.
 class BleKeyboard
 {
 public:
-    // passkey = 0 → Just Works (no PIN); passkey > 0 → display passkey pairing
     BleKeyboard(M5GFX& screen, const char* deviceName, uint32_t passkey = 0);
 
     void start();
     void stop();
     void tick();
 
-    void typeString(const char* str);
-    void runMacro();
+    // Scenario selection (idle-only; ignored while running).
+    void selectPrev();
+    void selectNext();
 
+    // Start executing the selected scenario (no-op if not authenticated).
+    void activate(uint32_t now);
+
+    // Interrupt a running scenario immediately.
+    void cancel();
+
+    bool isRunning()   const;
     bool isConnected() const;
 
 private:
     void drawScreen(uint32_t nowMs);
 
-    M5GFX&         screen_;
-    M5Canvas       canvas_;
-    bool           canvasReady_;
-    BleHidKeyboard transport_;
-    const char*    name_;
-    uint32_t       passkey_;
+    M5GFX&          screen_;
+    M5Canvas        canvas_;
+    bool            canvasReady_;
+    BleHidKeyboard  transport_;
+    ScenarioRunner  runner_;
+    const char*     name_;
+    uint32_t        passkey_;
 
     bool     active_;
-    uint32_t sentFlashMs_;
+    int      selectedScenario_;
+    uint32_t doneFlashMs_;
     uint32_t lastDrawMs_;
+    bool     dirty_;
 
     static constexpr uint32_t kDrawIntervalMs = 100;
 };

@@ -120,8 +120,24 @@ void BleHidKeyboard::sendKey(uint8_t modifier, uint8_t keycode)
     inputKeyboard_->setValue(press, sizeof(press));
     inputKeyboard_->notify();
 
-    delay(8);
+    delay(random(50, 71)); // human-like press duration
 
+    uint8_t release[8] = {};
+    inputKeyboard_->setValue(release, sizeof(release));
+    inputKeyboard_->notify();
+}
+
+void BleHidKeyboard::keyDown(uint8_t modifier, uint8_t keycode)
+{
+    if (!authenticated_ || inputKeyboard_ == nullptr) return;
+    uint8_t press[8] = {modifier, 0x00, keycode, 0x00, 0x00, 0x00, 0x00, 0x00};
+    inputKeyboard_->setValue(press, sizeof(press));
+    inputKeyboard_->notify();
+}
+
+void BleHidKeyboard::keyUp()
+{
+    if (!authenticated_ || inputKeyboard_ == nullptr) return;
     uint8_t release[8] = {};
     inputKeyboard_->setValue(release, sizeof(release));
     inputKeyboard_->notify();
